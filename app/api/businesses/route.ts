@@ -2,14 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { createBusiness, generateSlug } from "../../lib/db";
 
 function getBaseUrl(req: NextRequest): string {
+  // 1. Explicit override if set
   if (process.env.APP_BASE_URL) {
     return process.env.APP_BASE_URL.replace(/\/+$/, "");
   }
+
+  // 2. Vercel automatic production URL
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+
+  // 3. Vercel deployment URL
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+
+  // 4. Automatic incoming request host (works on any custom domain or Vercel preview)
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
-  const proto = req.headers.get("x-forwarded-proto") || "http";
+  const proto =
+    req.headers.get("x-forwarded-proto") ||
+    (host && host.includes("localhost") ? "http" : "https");
+
   if (host) {
     return `${proto}://${host}`;
   }
+
   return "http://localhost:3000";
 }
 
