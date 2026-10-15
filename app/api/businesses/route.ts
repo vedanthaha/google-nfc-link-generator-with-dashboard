@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createBusiness, generateSlug } from "../../lib/db";
+import { toDirectGoogleReviewUrl, extractPlaceId } from "../../lib/url-utils";
 
 function getBaseUrl(req: NextRequest): string {
   // 1. Explicit override if set
@@ -50,9 +51,12 @@ export async function POST(req: NextRequest) {
     }
 
     const trimmedName = name.trim();
-    const trimmedReviewUrl = googleReviewUrl.trim();
     const trimmedMapsUrl = mapsUrl ? String(mapsUrl).trim() : undefined;
-    const trimmedPlaceId = placeId ? String(placeId).trim() : undefined;
+    const directReviewUrl = toDirectGoogleReviewUrl(googleReviewUrl.trim());
+    const resolvedPlaceId =
+      (placeId ? String(placeId).trim() : undefined) ||
+      extractPlaceId(directReviewUrl) ||
+      (trimmedMapsUrl ? extractPlaceId(trimmedMapsUrl) : undefined);
 
     // Generate unique slug
     const slug = generateSlug(trimmedName);
@@ -61,8 +65,8 @@ export async function POST(req: NextRequest) {
       slug,
       name: trimmedName,
       maps_url: trimmedMapsUrl,
-      google_review_url: trimmedReviewUrl,
-      place_id: trimmedPlaceId,
+      google_review_url: directReviewUrl,
+      place_id: resolvedPlaceId || undefined,
     });
 
     const baseUrl = getBaseUrl(req);

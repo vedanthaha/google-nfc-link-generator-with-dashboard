@@ -20,8 +20,8 @@ export function featureIdToPlaceId(featureId: string): string | null {
   try {
     const parts = featureId.split(":");
     if (parts.length !== 2) return null;
-    const hex1 = parts[0].replace(/^0x/i, "");
-    const hex2 = parts[1].replace(/^0x/i, "");
+    const hex1 = parts[0].replace(/^0x/i, "").padStart(16, "0");
+    const hex2 = parts[1].replace(/^0x/i, "").padStart(16, "0");
     if (hex1.length !== 16 || hex2.length !== 16) return null;
 
     const bytes = new Uint8Array(20);
@@ -45,6 +45,27 @@ export function featureIdToPlaceId(featureId: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** Extracts a customer ID (CID) from a URL or feature ID */
+export function extractCid(url: string): string | null {
+  const cidMatch = url.match(/[?&](?:cid|ludocid)=([0-9]+)/i);
+  if (cidMatch) return cidMatch[1];
+
+  const featureId = extractFeatureId(url);
+  if (featureId) {
+    const parts = featureId.split(":");
+    if (parts.length === 2) {
+      try {
+        const hex2 = parts[1].replace(/^0x/i, "");
+        if (/^[0-9a-f]+$/i.test(hex2)) {
+          return BigInt("0x" + hex2).toString();
+        }
+      } catch {}
+    }
+  }
+
+  return null;
 }
 
 /** Extracts a Place ID from a Google URL if present, or derives it from feature data */
@@ -160,3 +181,34 @@ export function isValidUrl(input: string): boolean {
     return false;
   }
 }
+
+/**
+ * Ensures any Google Maps profile, search link, or shortened URL
+ * is transformed into a direct Google Review composer URL
+ * (search.google.com/local/writereview?placeid=... or ?ludocid=...)
+ * rather than opening the generic Google Maps location page.
+ */
+export function toDirectGoogleReviewUrl(input: string): string {
+  if (!input) return "";
+  const trimmed = input.trim();
+
+  // Already a direct writereview URL
+  if (isGoogleReviewUrl(trimmed)) {
+    return trimmed;
+  }
+
+  // Check for Place ID (either extracted or derived from feature ID)
+  const placeId = extractPlaceId(trimmed);
+  if (placeId) {
+    return buildReviewUrl(placeId);
+  }
+
+  // Check for CID / Ludocid
+  const cid = extractCid(trimmed);
+  if (cid) {
+    return `https://search.google.com/local/writereview?ludocid=${cid}`;
+  }
+
+  return trimmed;
+}
+

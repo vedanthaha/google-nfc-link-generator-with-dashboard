@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, use } from "react";
 import Link from "next/link";
+import { toDirectGoogleReviewUrl } from "../../lib/url-utils";
 
 interface BusinessData {
   id?: string;
@@ -135,6 +136,10 @@ export default function BusinessReviewPage({
     const textToCopy = generatedReview.trim();
     if (!textToCopy || !business?.google_review_url) return;
 
+    const targetUrl = toDirectGoogleReviewUrl(
+      business.google_review_url || business.maps_url || ""
+    );
+
     let copied = false;
 
     // 1. Try modern Async Clipboard API
@@ -170,7 +175,7 @@ export default function BusinessReviewPage({
       setIsNavigating(true);
       // Wait briefly so customer sees clear confirmation, then navigate to Google
       setTimeout(() => {
-        window.location.href = business.google_review_url;
+        window.location.href = targetUrl;
       }, 1200);
     } else {
       // Handle clipboard failures honestly without leaving user stranded
@@ -467,7 +472,9 @@ export default function BusinessReviewPage({
                   </p>
                   <a
                     id="manual-open-google-link"
-                    href={business.google_review_url}
+                    href={toDirectGoogleReviewUrl(
+                      business.google_review_url || business.maps_url || ""
+                    )}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-block mt-1 font-bold text-amber-900 dark:text-amber-200 underline"

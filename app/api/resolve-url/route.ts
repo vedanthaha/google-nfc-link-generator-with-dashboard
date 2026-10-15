@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   extractBusinessName,
   extractPlaceId,
+  extractCid,
   buildReviewUrl,
 } from "../../lib/url-utils";
 
@@ -62,15 +63,23 @@ export async function POST(request: NextRequest) {
 
     const businessName = extractBusinessName(resolvedUrl) || "";
     const placeId = extractPlaceId(resolvedUrl);
+    const cid = extractCid(resolvedUrl);
 
-    // Reliable review resolution: verified if Place ID is extracted
-    const isVerified = Boolean(placeId);
-    const reviewUrl = placeId ? buildReviewUrl(placeId) : "";
+    let reviewUrl = "";
+    if (placeId) {
+      reviewUrl = buildReviewUrl(placeId);
+    } else if (cid) {
+      reviewUrl = `https://search.google.com/local/writereview?ludocid=${cid}`;
+    }
+
+    // Reliable review resolution: verified if direct Place ID or CID is extracted
+    const isVerified = Boolean(reviewUrl);
 
     return NextResponse.json({
       resolvedUrl,
       businessName,
       placeId: placeId || null,
+      cid: cid || null,
       reviewUrl,
       isVerified,
     });
